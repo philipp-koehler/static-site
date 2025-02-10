@@ -61,3 +61,39 @@ class TestMain(unittest.TestCase):
         tuples = main.extract_markdown_links(text)
         expected = [("link", "www.google.com"), ("cool link", "www.boot.dev")]
         self.assertEqual(tuples, expected)
+
+    def test_split_links(self):
+        text = "This text has an ![image](www.google.com/image.jpg) and another ![image](www.boot.dev/weird.gif)"
+        node = TextNode(text, TextType.NORMAL)
+        output = main.split_nodes_image([node])
+        print(output)
+        expected = [
+            TextNode("This text has an ", TextType.NORMAL),
+            TextNode("image", TextType.IMAGES, "www.google.com/image.jpg"),
+            TextNode(" and another ", TextType.NORMAL),
+            TextNode("image", TextType.IMAGES, "www.boot.dev/weird.gif")
+        ]
+        self.assertEqual(output, expected)
+
+    def test_split_links_empty_start(self):
+        text = "![image](www.google.com/image.jpg) and another ![image](www.boot.dev/weird.gif)"
+        node = TextNode(text, TextType.NORMAL)
+        output = main.split_nodes_image([node])
+        print(output)
+        expected = [
+            TextNode("image", TextType.IMAGES, "www.google.com/image.jpg"),
+            TextNode(" and another ", TextType.NORMAL),
+            TextNode("image", TextType.IMAGES, "www.boot.dev/weird.gif")
+        ]
+        self.assertEqual(output, expected)
+        
+    def test_split_links_empty_middle(self):
+        text = "![image](www.google.com/image.jpg)![image](www.boot.dev/weird.gif)"
+        node = TextNode(text, TextType.NORMAL)
+        output = main.split_nodes_image([node])
+        print(output)
+        expected = [
+            TextNode("image", TextType.IMAGES, "www.google.com/image.jpg"),
+            TextNode("image", TextType.IMAGES, "www.boot.dev/weird.gif")
+        ]
+        self.assertEqual(output, expected)

@@ -1,3 +1,4 @@
+from collections.abc import Container
 from textnode import TextNode, TextType
 from htmlnode import HTMLNode, LeafNode, ParentNode
 import re
@@ -31,7 +32,6 @@ def split_nodes_delimiter(old_nodes, delimiter, text_type):
                     return_node.append(TextNode(node_split[i], text_type))
         else:
             return_node.append(old_node)
-        print(return_node)
     return return_node
 
 def extract_markdown_images(text):
@@ -42,6 +42,23 @@ def extract_markdown_links(text):
     regex = r"(?<!!)\[(.*?)\]\((.*?)\)"
     return re.findall(regex, text)
 
+def split_nodes_image(old_nodes):
+    new_nodes = []
+    for node in old_nodes:
+        contained_images = extract_markdown_images(node.text)
+        if contained_images != []:
+            split_node = node.text.split(f"![{contained_images[0][0]}]({contained_images[0][1]})", 1)
+            if split_node[0] != "":
+                new_nodes.append(TextNode(split_node[0], TextType.NORMAL))
+            new_nodes.append(TextNode(contained_images[0][0], TextType.IMAGES, contained_images[0][1]))
+            if split_node[1] == "":
+                continue
+            additional_nodes = split_nodes_image([TextNode(split_node[1], TextType.NORMAL)])
+            for add_node in additional_nodes:
+                new_nodes.append(add_node)
+    print(new_nodes)
+    return new_nodes        
+        
 def main():
     textnode = TextNode("This is a text", TextType.BOLD, "https://www.boot.dev")
     print(textnode)
