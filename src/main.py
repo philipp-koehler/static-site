@@ -88,14 +88,19 @@ def text_to_textnodes(text):
     return nodes    
 
 def find_marker(line):
-    marker = ""
-    if line.startswith("# "):
-        marker = "# "
-    elif line.startswith("* "):
-        marker = "* "
-    return marker
-    
-    
+    marker = [""]
+    if bool(re.search(r"^#{1,3} ", line)):
+        marker = re.search(r"^#{1,3} ", line)
+    elif bool(re.search(r"^(\* |- )", line)):
+        marker = re.search(r"^(\* |- )", line)
+    elif bool(re.search(r"^\d+\. ", line)):
+        marker = re.search(r"^\d+\. ", line)
+    elif bool(re.search(r"^> ", line)):
+        marker = re.search(r"^> ", line)
+    if marker is not None:
+        return marker[0]
+    else:
+        return ""
 
 def markdown_to_block(markdown):
     block = []
@@ -109,14 +114,31 @@ def markdown_to_block(markdown):
     for line in block:
         if marker == line[0]:
             new_lines[i] += line[1] + "\n"
-            print(f"{i}: " + new_lines[i])
         else:
             marker = line[0]
             i += 1
             new_lines.append(line[1] + "\n")
     return_lines = [re.sub(r"\n$", "", s, 1) for s in new_lines]    
     return return_lines 
-    
+
+def block_to_block_type(block):
+    block_lines = block.split("\n")
+    marker = find_marker(block_lines[0])
+    if marker == "" and block_lines[0].startswith("```") and block_lines[-1].endswith("```"):
+        return "CODEBLOCK"
+    elif marker == "":
+        return "NORMALBLOCK"
+    for line in block_lines:
+        if marker != find_marker(line):
+            return "NORMALBLOCK"
+    if re.match(r"^[#]{1,3} ", block_lines[0]):
+        return "HEADINGBLOCK"
+    elif re.match(r"^(\* |- )", block_lines[0]):
+        return "UNORDEREDLISTBLOCK"
+    elif re.match(r"^\d+\. ", block_lines[0]):
+        return "ORDEREDLISTBLOCK"
+    elif re.match(r"^> ", block_lines[0]):
+        return "COMMENTBLOCK"
     
 def main():
     print("Welcome to the Nodesifyer!")

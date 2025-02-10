@@ -166,3 +166,9 @@ This is a paragraph of text. It has some **bold** and *italic* words inside of i
         print("function: " + str(block_list))
         print("expected: " + str(expected))
         self.assertEqual(block_list, expected)
+
+    def test_block_to_block_type(self):
+        input = "``` test\n bla```"
+        output = main.block_to_block_type(input)
+        expected = "CODEBLOCK"
+        self.assertEqual(output, expected)
