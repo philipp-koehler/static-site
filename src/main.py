@@ -18,6 +18,22 @@ def text_node_to_html_node(text_node):
         case _:
             raise Exception("Unknown TextType")
 
+def split_nodes_delimiter(old_nodes, delimiter, text_type):
+    return_node = []
+    for old_node in old_nodes:
+        if old_node.text_type == TextType.NORMAL:
+            node_split = old_node.text.split(delimiter)
+            for i in range(0,len(node_split)):
+                if (i+1) % 2 == 1:
+                    return_node.append(TextNode(node_split[i], TextType.NORMAL))
+                else:
+                    return_node.append(TextNode(node_split[i], text_type))
+        else:
+            return_node.append(old_node)
+        print(return_node)
+    return return_node
+
+
 def main():
     textnode = TextNode("This is a text", TextType.BOLD, "https://www.boot.dev")
     print(textnode)
