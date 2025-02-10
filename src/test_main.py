@@ -62,7 +62,7 @@ class TestMain(unittest.TestCase):
         expected = [("link", "www.google.com"), ("cool link", "www.boot.dev")]
         self.assertEqual(tuples, expected)
 
-    def test_split_links(self):
+    def test_split_images(self):
         text = "This text has an ![image](www.google.com/image.jpg) and another ![image](www.boot.dev/weird.gif)"
         node = TextNode(text, TextType.NORMAL)
         output = main.split_nodes_image([node])
@@ -75,7 +75,7 @@ class TestMain(unittest.TestCase):
         ]
         self.assertEqual(output, expected)
 
-    def test_split_links_empty_start(self):
+    def test_split_images_empty_start(self):
         text = "![image](www.google.com/image.jpg) and another ![image](www.boot.dev/weird.gif)"
         node = TextNode(text, TextType.NORMAL)
         output = main.split_nodes_image([node])
@@ -87,7 +87,7 @@ class TestMain(unittest.TestCase):
         ]
         self.assertEqual(output, expected)
         
-    def test_split_links_empty_middle(self):
+    def test_split_images_empty_middle(self):
         text = "![image](www.google.com/image.jpg)![image](www.boot.dev/weird.gif)"
         node = TextNode(text, TextType.NORMAL)
         output = main.split_nodes_image([node])
@@ -97,3 +97,54 @@ class TestMain(unittest.TestCase):
             TextNode("image", TextType.IMAGES, "www.boot.dev/weird.gif")
         ]
         self.assertEqual(output, expected)
+
+        
+    def test_split_links(self):
+        text = "This text has an [image](www.google.com/image.jpg) and another [image](www.boot.dev/weird.gif)"
+        node = TextNode(text, TextType.NORMAL)
+        output = main.split_nodes_link([node])
+        expected = [
+            TextNode("This text has an ", TextType.NORMAL),
+            TextNode("image", TextType.LINKS, "www.google.com/image.jpg"),
+            TextNode(" and another ", TextType.NORMAL),
+            TextNode("image", TextType.LINKS, "www.boot.dev/weird.gif")
+            ]
+        self.assertEqual(output, expected)
+
+    def test_split_links_empty_start(self):
+        text = "[image](www.google.com/image.jpg) and another [image](www.boot.dev/weird.gif)"
+        node = TextNode(text, TextType.NORMAL)
+        output = main.split_nodes_link([node])    
+        expected  = [
+            TextNode("image", TextType.LINKS, "www.google.com/image.jpg"),
+            TextNode(" and another ", TextType.NORMAL),
+            TextNode("image", TextType.LINKS, "www.boot.dev/weird.gif")
+        ]
+        self.assertEqual(output, expected)
+        
+    def test_split_links_empty_middle(self):
+        text = "[image](www.google.com/image.jpg)[image](www.boot.dev/weird.gif)"
+        node = TextNode(text, TextType.NORMAL)
+        output = main.split_nodes_link([node])
+        expected = [
+            TextNode("image", TextType.LINKS, "www.google.com/image.jpg"),
+            TextNode("image", TextType.LINKS, "www.boot.dev/weird.gif")
+        ]
+        self.assertEqual(output, expected)
+
+    def test_text_to_texnodes(self):
+        input = "This is **text** with an *italic* word and a `code block` and an ![obi wan image](https://i.imgur.com/fJRm4Vk.jpeg) and a [link](https://boot.dev)"
+        node = main.text_to_textnodes(input)
+        expected = [
+            TextNode("This is ", TextType.NORMAL),
+            TextNode("text", TextType.BOLD),
+            TextNode(" with an ", TextType.NORMAL),
+            TextNode("italic", TextType.ITALIC),
+            TextNode(" word and a ", TextType.NORMAL),
+            TextNode("code block", TextType.CODE),
+            TextNode(" and an ", TextType.NORMAL),
+            TextNode("obi wan image", TextType.IMAGES, "https://i.imgur.com/fJRm4Vk.jpeg"),
+            TextNode(" and a ", TextType.NORMAL),
+            TextNode("link", TextType.LINKS, "https://boot.dev")
+        ]
+        self.assertEqual(node, expected)

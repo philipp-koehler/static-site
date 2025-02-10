@@ -56,12 +56,39 @@ def split_nodes_image(old_nodes):
             additional_nodes = split_nodes_image([TextNode(split_node[1], TextType.NORMAL)])
             for add_node in additional_nodes:
                 new_nodes.append(add_node)
-    print(new_nodes)
+        else:
+            new_nodes.append(node)
+    return new_nodes        
+
+def split_nodes_link(old_nodes):
+    new_nodes = []
+    for node in old_nodes:
+        contained_links = extract_markdown_links(node.text)
+        if contained_links != []:
+            split_node = node.text.split(f"[{contained_links[0][0]}]({contained_links[0][1]})", 1)
+            if split_node[0] != "":
+                new_nodes.append(TextNode(split_node[0], TextType.NORMAL))
+            new_nodes.append(TextNode(contained_links[0][0], TextType.LINKS, contained_links[0][1]))
+            if split_node[1] == "":
+                continue
+            additional_nodes = split_nodes_link([TextNode(split_node[1], TextType.NORMAL)])
+            for add_node in additional_nodes:
+                new_nodes.append(add_node)
+        else:
+            new_nodes.append(node)
     return new_nodes        
         
-def main():
-    textnode = TextNode("This is a text", TextType.BOLD, "https://www.boot.dev")
-    print(textnode)
+def text_to_textnodes(text):
+    node = TextNode(text, TextType.NORMAL)
+    nodes = split_nodes_delimiter([node], "**", TextType.BOLD)
+    nodes = split_nodes_delimiter(nodes, "*", TextType.ITALIC)
+    nodes = split_nodes_delimiter(nodes, "`", TextType.CODE)
+    nodes = split_nodes_link(nodes)
+    nodes = split_nodes_image(nodes)
+    return nodes    
 
+def main():
+    print("Welcome to the Nodesifyer!")
+    
 if __name__ == "__main__":
     main()
