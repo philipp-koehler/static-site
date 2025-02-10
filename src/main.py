@@ -87,6 +87,37 @@ def text_to_textnodes(text):
     nodes = split_nodes_image(nodes)
     return nodes    
 
+def find_marker(line):
+    marker = ""
+    if line.startswith("# "):
+        marker = "# "
+    elif line.startswith("* "):
+        marker = "* "
+    return marker
+    
+    
+
+def markdown_to_block(markdown):
+    block = []
+    lines = markdown.split("\n")
+    for line in lines:
+        marker = find_marker(line)
+        block.append((marker, line))
+    marker = block[0][0]
+    new_lines = [""]
+    i = 0
+    for line in block:
+        if marker == line[0]:
+            new_lines[i] += line[1] + "\n"
+            print(f"{i}: " + new_lines[i])
+        else:
+            marker = line[0]
+            i += 1
+            new_lines.append(line[1] + "\n")
+    return_lines = [re.sub(r"\n$", "", s, 1) for s in new_lines]    
+    return return_lines 
+    
+    
 def main():
     print("Welcome to the Nodesifyer!")
     

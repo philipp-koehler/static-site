@@ -148,3 +148,21 @@ class TestMain(unittest.TestCase):
             TextNode("link", TextType.LINKS, "https://boot.dev")
         ]
         self.assertEqual(node, expected)
+
+    def test_markdown_to_block(self):
+        input = """# This is a heading
+
+This is a paragraph of text. It has some **bold** and *italic* words inside of it.
+
+* This is the first list item in a list block
+* This is a list item
+* This is another list item"""
+        block_list = main.markdown_to_block(input)
+        expected = [
+            "# This is a heading",
+            "\nThis is a paragraph of text. It has some **bold** and *italic* words inside of it.\n",
+            "* This is the first list item in a list block\n* This is a list item\n* This is another list item"             
+        ]
+        print("function: " + str(block_list))
+        print("expected: " + str(expected))
+        self.assertEqual(block_list, expected)
