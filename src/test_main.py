@@ -49,3 +49,15 @@ class TestMain(unittest.TestCase):
             TextNode("!", TextType.NORMAL),
             ]
         self.assertEqual(new_nodes, expected_nodes)
+
+    def test_find_images(self):
+        text = "This text has an ![image](www.google.com/image.jpg) and another ![image](www.boot.dev/weird.gif)"
+        tuples = main.extract_markdown_images(text)
+        expected = [("image", "www.google.com/image.jpg"), ("image", "www.boot.dev/weird.gif")]
+        self.assertEqual(tuples, expected)
+
+    def test_find_links(self):
+        text = "This text has a [link](www.google.com) and another [cool link](www.boot.dev)"
+        tuples = main.extract_markdown_links(text)
+        expected = [("link", "www.google.com"), ("cool link", "www.boot.dev")]
+        self.assertEqual(tuples, expected)
