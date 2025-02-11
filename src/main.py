@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from collections.abc import Container
 from textnode import TextNode, TextType
 from htmlnode import HTMLNode, LeafNode, ParentNode
