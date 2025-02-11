@@ -133,14 +133,45 @@ def block_to_block_type(block):
     for line in block_lines:
         if marker != find_marker(line):
             return "NORMALBLOCK"
-    if re.match(r"^[#]{1,3} ", block_lines[0]):
-        return "HEADINGBLOCK"
+    if re.match(r"^[#]{1} ", block_lines[0]):
+        return "HEADINGBLOCK1"
+    if re.match(r"^[#]{2} ", block_lines[0]):
+        return "HEADINGBLOCK2"
+    if re.match(r"^[#]{3} ", block_lines[0]):
+        return "HEADINGBLOCK3"
     elif re.match(r"^(\* |- )", block_lines[0]):
         return "UNORDEREDLISTBLOCK"
     elif re.match(r"^\d+\. ", block_lines[0]):
         return "ORDEREDLISTBLOCK"
     elif re.match(r"^> ", block_lines[0]):
         return "COMMENTBLOCK"
+    
+def markdown_to_html_node(markdown):
+    markdown_blocks = markdown_to_block(markdown)
+    html_blocks = markdown_blocks.copy()
+    markdown_block_type = []
+    for i in range(0, len(markdown_blocks)):
+        block_type = block_to_block_type(markdown_blocks[i])
+        match block_type:
+            case "CODEBLOCK":
+                markdown_blocks[i] = "<code>" + markdown_blocks[i] + "</code>"
+            case "HEADINGBLOCK1":
+                markdown_blocks[i] = "<h1>" + markdown_blocks[i] + "</h1>"
+            case "HEADINGBLOCK2":
+                markdown_blocks[i] = "<h2>" + markdown_blocks[i] + "</h2>"
+            case "HEADINGBLOCK3":
+                markdown_blocks[i] = "<h3>" + markdown_blocks[i] + "</h3>"
+            case "UNORDEREDLISTBLOCK":
+                markdown_blocks[i] = "<ul>" + markdown_blocks[i] + "</ul>"
+            case "ORDEREDLISTBLOCK":
+                markdown_blocks[i] = "<ol>" + markdown_blocks[i] + "</ol>"
+            case "COMMENTBLOCK":
+                markdown_blocks[i] = "<blockquote>" + markdown_blocks[i] + "</blockquote>"             
+            case _:
+                break
+        
+        
+                
     
 def main():
     print("Welcome to the Nodesifyer!")
