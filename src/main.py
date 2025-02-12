@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 
 from collections.abc import Container
+from os.path import isdir
 from textnode import TextNode, TextType
 from htmlnode import HTMLNode, LeafNode, ParentNode
 import re
+import os
+import shutil
 
 def text_node_to_html_node(text_node):
     match text_node.text_type:
@@ -16,9 +19,9 @@ def text_node_to_html_node(text_node):
         case(TextType.CODE):
                     return LeafNode(text_node.text, "code")
         case(TextType.IMAGES):
-                    return LeafNode(text_node.text, "img", None, {"href": text_node.url})
+                    return LeafNode(text_node.text, "img", {"href": text_node.url})
         case(TextType.LINKS):
-                    return LeafNode(text_node.text, "a", None, {"href": text_node.url})
+                    return LeafNode(text_node.text, "a", {"href": text_node.url})
         case _:
             raise Exception("Unknown TextType")
 
@@ -99,6 +102,8 @@ def find_marker(line):
         marker = re.search(r"^\d+\. ", line)
     elif bool(re.search(r"^> ", line)):
         marker = re.search(r"^> ", line)
+    elif bool(re.search(r"```", line)):
+        marker = re.search(r"```", line)
     if marker is not None:
         return marker[0]
     else:
@@ -107,13 +112,21 @@ def find_marker(line):
 def markdown_to_block(markdown):
     block = []
     lines = markdown.split("\n")
+    code = False
     for line in lines:
         marker = find_marker(line)
-        block.append((marker, line))
+        if marker == "```":
+            code = not code
+        if code == True:
+            block.append(("```", line))
+        else:
+            block.append((marker, line))
     marker = block[0][0]
     new_lines = [""]
     i = 0
     for line in block:
+        if re.search(r"^\d+\. ", line[0]):
+            line = ("1. ", re.sub(r"^\d+\. ", "1. ", line[1]))
         if marker == line[0]:
             new_lines[i] += line[1] + "\n"
         else:
@@ -126,7 +139,7 @@ def markdown_to_block(markdown):
 def block_to_block_type(block):
     block_lines = block.split("\n")
     marker = find_marker(block_lines[0])
-    if marker == "" and block_lines[0].startswith("```") and block_lines[-1].endswith("```"):
+    if marker == "```":
         return "CODEBLOCK"
     elif marker == "":
         return "NORMALBLOCK"
@@ -148,33 +161,102 @@ def block_to_block_type(block):
     
 def markdown_to_html_node(markdown):
     markdown_blocks = markdown_to_block(markdown)
-    html_blocks = markdown_blocks.copy()
-    markdown_block_type = []
+    html_block_nodes = []
     for i in range(0, len(markdown_blocks)):
         block_type = block_to_block_type(markdown_blocks[i])
         match block_type:
             case "CODEBLOCK":
-                markdown_blocks[i] = "<code>" + markdown_blocks[i] + "</code>"
+                markdown_blocks[i] = markdown_blocks[i].replace("```", "")
             case "HEADINGBLOCK1":
-                markdown_blocks[i] = "<h1>" + markdown_blocks[i] + "</h1>"
+                markdown_blocks[i] = markdown_blocks[i].replace("# ", "")
             case "HEADINGBLOCK2":
-                markdown_blocks[i] = "<h2>" + markdown_blocks[i] + "</h2>"
+                markdown_blocks[i] = markdown_blocks[i].replace("## ", "")
             case "HEADINGBLOCK3":
-                markdown_blocks[i] = "<h3>" + markdown_blocks[i] + "</h3>"
+                markdown_blocks[i] = markdown_blocks[i].replace("### ", "")
             case "UNORDEREDLISTBLOCK":
-                markdown_blocks[i] = "<ul>" + markdown_blocks[i] + "</ul>"
+                lines = markdown_blocks[i].split("\n")
+                modified_lines = [line.removeprefix("* ").removeprefix("- ") for line in lines]
+                markdown_blocks[i] = "\n".join(modified_lines)
             case "ORDEREDLISTBLOCK":
-                markdown_blocks[i] = "<ol>" + markdown_blocks[i] + "</ol>"
+                lines = markdown_blocks[i].split("\n")
+                modified_lines = [re.sub(r"^\d+\. ", "", line) for line in lines]
+                markdown_blocks[i] = "\n".join(modified_lines)
             case "COMMENTBLOCK":
-                markdown_blocks[i] = "<blockquote>" + markdown_blocks[i] + "</blockquote>"             
-            case _:
-                break
-        
-        
+                markdown_blocks[i] = markdown_blocks[i].replace("> ", "")
+            case "NORMALBLOCK":
+                markdown_blocks[i] = markdown_blocks[i].strip("\n")
+        text_nodes = text_to_textnodes(markdown_blocks[i])
+        html_nodes = []
+        for node in text_nodes:
+            html_nodes.append(text_node_to_html_node(node))
+        match block_type:
+            case "CODEBLOCK":
+                html_block_nodes.append(ParentNode("code", html_nodes))
+            case "HEADINGBLOCK1":
+                html_block_nodes.append(ParentNode("h1", html_nodes))
+            case "HEADINGBLOCK2":
+                html_block_nodes.append(ParentNode("h2", html_nodes))
+            case "HEADINGBLOCK3":
+                html_block_nodes.append(ParentNode("h3", html_nodes))
+            case "UNORDEREDLISTBLOCK":
+                lines = []
+                for node in html_nodes:
+                    print(node)
+                    lines.append(node.value.splitlines())
+                modified_lines = [LeafNode(line, "li") for line in lines]
+                html_nodes = [*modified_lines]
+                html_block_nodes.append(ParentNode("ul", html_nodes))
                 
+            case "ORDEREDLISTBLOCK":
+                lines = html_nodes[0].value.splitlines()
+                modified_lines = [LeafNode(line, "li") for line in lines]
+                html_nodes = [*modified_lines]
+                html_block_nodes.append(ParentNode("ol", html_nodes))
+            case "COMMENTBLOCK":
+                html_block_nodes.append(ParentNode("blockquote", html_nodes))
+            case "NORMALBLOCK":
+                html_block_nodes.append(ParentNode("p", html_nodes))
+    div_block = ParentNode("div", html_block_nodes)
+    return div_block
+
+def copy_all(source, dest):
+    shutil.rmtree(dest)
+    os.mkdir(dest)
+    if not (os.path.isdir(source)):
+        raise Exception("Source not a directory")
+    for obj in os.listdir(source):
+        source_object = os.path.join(source, obj)
+        dest_object = os.path.join(dest, obj)
+        if os.path.isfile(source_object):
+            shutil.copy(source_object, dest)
+        elif os.path.isdir(source_object):
+            os.mkdir(dest_object)
+            copy_all(source_object, dest_object)        
+
+def extract_markdown_title(title):
+    if re.match(r"# ", title):
+        return title.strip("# ")
+    else:
+        raise Exception("No header found")
+
+def generate_page(from_path, template_path, dest_path):
+    print(f"Generating page from {from_path} to {dest_path} using {template_path}")
+    with open(from_path, "r") as f, open(template_path, "r") as t:
+        title = extract_markdown_title(f.readline())
+        f.seek(0)
+        content = f.read()
+        template = t.read()
+    html_nodes = markdown_to_html_node(content)
+    html_string = html_nodes.to_html()
+    filled_template = template.replace("{{ Title }}", title).replace("{{ Content }}", html_string)
+    with open(os.path.join(dest_path, "index.html"), "w") as w:
+        w.write(filled_template)
     
+
 def main():
     print("Welcome to the Nodesifyer!")
+    copy_all("static", "public")
+    generate_page("content/index.md", "template.html", "public")
     
 if __name__ == "__main__":
     main()

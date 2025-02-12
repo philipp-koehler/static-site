@@ -27,7 +27,7 @@ class HTMLNode:
 
 class LeafNode(HTMLNode):
 
-    def __init__(self, value, tag=None, children=None, props=None) -> None:
+    def __init__(self, value, tag=None, props=None, children=None) -> None:
         super().__init__(tag, value, children, props)
 
     def __eq__(self, other) -> bool:
@@ -54,13 +54,15 @@ class ParentNode(HTMLNode):
         super().__init__(tag, value, children, props)
 
     def __eq__(self, other) -> bool:
-        if isinstance(other, LeafNode):
+        if isinstance(other, ParentNode):
             return self.tag == other.tag and \
             self.value == other.value and \
             self.children == other.children and \
             self.props == other.props and \
             self.children is not None and \
-            self.tag is not None
+            other.children is not None and \
+            self.tag is not None and \
+            other.tag is not None
         return False
         
     def to_html(self):

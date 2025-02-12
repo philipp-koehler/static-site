@@ -1,5 +1,5 @@
 import unittest
-from htmlnode import LeafNode
+from htmlnode import LeafNode, HTMLNode, ParentNode
 import main
 from textnode import TextNode, TextType
 
@@ -11,12 +11,12 @@ class TestMain(unittest.TestCase):
 
     def test_url(self):
         leaf_node = main.text_node_to_html_node(TextNode("test", TextType.LINKS, "www.boot.dev"))
-        expected = LeafNode("test", "a", None, {"href": "www.boot.dev"})
+        expected = LeafNode("test", "a", {"href": "www.boot.dev"})
         self.assertEqual(leaf_node, expected)
         
     def test_image(self):
         leaf_node = main.text_node_to_html_node(TextNode("test", TextType.IMAGES, "www.boot.dev"))
-        expected = LeafNode("test", "img", None, {"href": "www.boot.dev"})
+        expected = LeafNode("test", "img", {"href": "www.boot.dev"})
         
     def test_split_nodes(self):
         node = TextNode("This is text with a `code block` word", TextType.NORMAL)
@@ -66,7 +66,6 @@ class TestMain(unittest.TestCase):
         text = "This text has an ![image](www.google.com/image.jpg) and another ![image](www.boot.dev/weird.gif)"
         node = TextNode(text, TextType.NORMAL)
         output = main.split_nodes_image([node])
-        print(output)
         expected = [
             TextNode("This text has an ", TextType.NORMAL),
             TextNode("image", TextType.IMAGES, "www.google.com/image.jpg"),
@@ -79,7 +78,6 @@ class TestMain(unittest.TestCase):
         text = "![image](www.google.com/image.jpg) and another ![image](www.boot.dev/weird.gif)"
         node = TextNode(text, TextType.NORMAL)
         output = main.split_nodes_image([node])
-        print(output)
         expected = [
             TextNode("image", TextType.IMAGES, "www.google.com/image.jpg"),
             TextNode(" and another ", TextType.NORMAL),
@@ -91,7 +89,6 @@ class TestMain(unittest.TestCase):
         text = "![image](www.google.com/image.jpg)![image](www.boot.dev/weird.gif)"
         node = TextNode(text, TextType.NORMAL)
         output = main.split_nodes_image([node])
-        print(output)
         expected = [
             TextNode("image", TextType.IMAGES, "www.google.com/image.jpg"),
             TextNode("image", TextType.IMAGES, "www.boot.dev/weird.gif")
@@ -163,12 +160,70 @@ This is a paragraph of text. It has some **bold** and *italic* words inside of i
             "\nThis is a paragraph of text. It has some **bold** and *italic* words inside of it.\n",
             "* This is the first list item in a list block\n* This is a list item\n* This is another list item"             
         ]
-        print("function: " + str(block_list))
-        print("expected: " + str(expected))
         self.assertEqual(block_list, expected)
 
     def test_block_to_block_type(self):
         input = "``` test\n bla```"
         output = main.block_to_block_type(input)
         expected = "CODEBLOCK"
+        self.assertEqual(output, expected)
+
+    def test_all(self):
+        input = \
+"""# test
+
+A simple text with [link](www.boot.dev) and stuff.
+
+## A list
+
+- bla
+- bla
+- bla
+
+## Another list
+
+* bla
+* bla
+* bla
+
+```Some code
+over multiple lines```
+
+
+And some **fancy** text for **show**. 
+
+> GRRRREAAT
+
+End
+"""
+        output = main.markdown_to_html_node(input)
+        expected = ParentNode("div", [
+                       ParentNode("h1", [LeafNode("test")]), 
+                       ParentNode("p", [
+                           LeafNode("A simple text with "), 
+                           LeafNode("link", "a", {"href": "www.boot.dev"}), 
+                           LeafNode(" and stuff.")]), 
+                       ParentNode("h2", [LeafNode("A list")]), 
+                       ParentNode("p", [LeafNode("")]), 
+                       ParentNode("ul", [
+                           LeafNode("bla", "li"),
+                           LeafNode("bla", "li"), 
+                           LeafNode("bla", "li")]), 
+                       ParentNode("p", [LeafNode("")]), 
+                       ParentNode("h2", [LeafNode("Another list")]), 
+                       ParentNode("p", [LeafNode("")]), 
+                       ParentNode("ul", [
+                           LeafNode("bla", "li"), 
+                           LeafNode("bla", "li"), 
+                           LeafNode("bla", "li")]), 
+                       ParentNode("p", [LeafNode("")]), 
+                       ParentNode("code", [LeafNode("Some code\nover multiple lines")]), 
+                       ParentNode("p", [
+                           LeafNode("And some "), 
+                           LeafNode("fancy", "b"), 
+                           LeafNode(" text for "), 
+                           LeafNode("show", "b"), 
+                           LeafNode(". ")]), 
+                       ParentNode("blockquote", [LeafNode("GRRRREAAT")]), 
+                       ParentNode("p", [LeafNode("End")])])
         self.assertEqual(output, expected)
