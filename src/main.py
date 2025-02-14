@@ -7,6 +7,7 @@ from htmlnode import HTMLNode, LeafNode, ParentNode
 import re
 import os
 import shutil
+import pathlib
 
 block_type_paragraph = "paragraph"
 block_type_heading = "heading"
@@ -309,11 +310,23 @@ def generate_page(from_path, template_path, dest_path):
     with open(os.path.join(dest_path, "index.html"), "w") as w:
         w.write(filled_template)
 
+def generate_page_recursive(dir_path_content, template_path, dest_dir_path):
+    obj_list = os.listdir(dir_path_content)
+    print(obj_list)
+    print(os.path.isfile(obj_list[0]))
+    for obj in obj_list:
+        if os.path.isfile(os.path.join(dir_path_content, obj)) and obj.endswith(".md"):
+            print(f"file {obj}")
+            generate_page(os.path.join(dir_path_content, obj), template_path, dest_dir_path)
+        elif os.path.isdir(os.path.join(dir_path_content, obj)):
+            print(f"folder {obj}")
+            os.mkdir(os.path.join(dest_dir_path, obj))
+            generate_page_recursive(os.path.join(dir_path_content, obj), template_path, os.path.join(dest_dir_path, obj))
 
 def main():
     print("Welcome to the Nodesifyer!")
     copy_all("static", "public")
-    generate_page("content/index.md", "template.html", "public")
+    generate_page_recursive("content", "template.html", "public")
 
 
 if __name__ == "__main__":
