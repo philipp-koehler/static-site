@@ -8,6 +8,13 @@ import re
 import os
 import shutil
 
+block_type_paragraph = "paragraph"
+block_type_heading = "heading"
+block_type_code = "code"
+block_type_quote = "quote"
+block_type_olist = "ordered_list"
+block_type_ulist = "unordered_list"
+
 
 def text_node_to_html_node(text_node):
     match text_node.text_type:
@@ -121,141 +128,146 @@ def text_to_textnodes(text):
     nodes = split_nodes_image(nodes)
     return nodes
 
-
-def find_marker(line):
-    marker = [""]
-    if bool(re.search(r"^#{1,3} ", line)):
-        marker = re.search(r"^#{1,3} ", line)
-    elif bool(re.search(r"^(\* |- )", line)):
-        marker = re.search(r"^(\* |- )", line)
-    elif bool(re.search(r"^\d+\. ", line)):
-        marker = re.search(r"^\d+\. ", line)
-    elif bool(re.search(r"^> ", line)):
-        marker = re.search(r"^> ", line)
-    elif bool(re.search(r"```", line)):
-        marker = re.search(r"```", line)
-    if marker is not None:
-        return marker[0]
-    else:
-        return ""
-
-
-def markdown_to_block(markdown):
-    block = []
-    lines = markdown.split("\n")
-    code = False
-    for line in lines:
-        marker = find_marker(line)
-        if marker == "```":
-            code = not code
-        if code == True:
-            block.append(("```", line))
-        else:
-            block.append((marker, line))
-    marker = block[0][0]
-    new_lines = [""]
-    i = 0
-    for line in block:
-        if re.search(r"^\d+\. ", line[0]):
-            line = ("1. ", re.sub(r"^\d+\. ", "1. ", line[1]))
-        if marker == line[0]:
-            new_lines[i] += line[1] + "\n"
-        else:
-            marker = line[0]
-            i += 1
-            new_lines.append(line[1] + "\n")
-    return_lines = [re.sub(r"\n$", "", s, 1) for s in new_lines]
-    return return_lines
+def markdown_to_blocks(markdown):
+    blocks = markdown.split("\n\n")
+    filtered_blocks = []
+    for block in blocks:
+        if block == "":
+            continue
+        block = block.strip()
+        filtered_blocks.append(block)
+    return filtered_blocks
 
 
 def block_to_block_type(block):
-    block_lines = block.split("\n")
-    marker = find_marker(block_lines[0])
-    if marker == "```":
-        return "CODEBLOCK"
-    elif marker == "":
-        return "NORMALBLOCK"
-    for line in block_lines:
-        if marker != find_marker(line):
-            return "NORMALBLOCK"
-    if re.match(r"^[#]{1} ", block_lines[0]):
-        return "HEADINGBLOCK1"
-    if re.match(r"^[#]{2} ", block_lines[0]):
-        return "HEADINGBLOCK2"
-    if re.match(r"^[#]{3} ", block_lines[0]):
-        return "HEADINGBLOCK3"
-    elif re.match(r"^(\* |- )", block_lines[0]):
-        return "UNORDEREDLISTBLOCK"
-    elif re.match(r"^\d+\. ", block_lines[0]):
-        return "ORDEREDLISTBLOCK"
-    elif re.match(r"^> ", block_lines[0]):
-        return "COMMENTBLOCK"
+    lines = block.split("\n")
 
+    if block.startswith(("# ", "## ", "### ", "#### ", "##### ", "###### ")):
+        return block_type_heading
+    if (
+        len(lines) > 1
+        and lines[0].startswith("```")
+        and lines[-1].startswith("```")
+    ):
+        return block_type_code
+    if block.startswith(">"):
+        for line in lines:
+            if not line.startswith(">"):
+                return block_type_paragraph
+        return block_type_quote
+    if block.startswith("* "):
+        for line in lines:
+            if not line.startswith("* "):
+                return block_type_paragraph
+        return block_type_ulist
+    if block.startswith("- "):
+        for line in lines:
+            if not line.startswith("- "):
+                return block_type_paragraph
+        return block_type_ulist
+    if block.startswith("1. "):
+        i = 1
+        for line in lines:
+            if not line.startswith(f"{i}. "):
+                return block_type_paragraph
+            i += 1
+        return block_type_olist
+    return block_type_paragraph
 
 def markdown_to_html_node(markdown):
-    markdown_blocks = markdown_to_block(markdown)
-    html_block_nodes = []
-    for i in range(0, len(markdown_blocks)):
-        block_type = block_to_block_type(markdown_blocks[i])
-        match block_type:
-            case "CODEBLOCK":
-                markdown_blocks[i] = markdown_blocks[i].replace("```", "")
-            case "HEADINGBLOCK1":
-                markdown_blocks[i] = markdown_blocks[i].replace("# ", "")
-            case "HEADINGBLOCK2":
-                markdown_blocks[i] = markdown_blocks[i].replace("## ", "")
-            case "HEADINGBLOCK3":
-                markdown_blocks[i] = markdown_blocks[i].replace("### ", "")
-            case "UNORDEREDLISTBLOCK":
-                lines = markdown_blocks[i].split("\n")
-                modified_lines = [
-                    line.removeprefix("* ").removeprefix("- ")
-                    for line in lines
-                ]
-                markdown_blocks[i] = "\n".join(modified_lines)
-            case "ORDEREDLISTBLOCK":
-                lines = markdown_blocks[i].split("\n")
-                modified_lines = [
-                    re.sub(r"^\d+\. ", "", line) for line in lines
-                ]
-                markdown_blocks[i] = "\n".join(modified_lines)
-            case "COMMENTBLOCK":
-                markdown_blocks[i] = markdown_blocks[i].replace("> ", "")
-            case "NORMALBLOCK":
-                markdown_blocks[i] = markdown_blocks[i].strip("\n")
-        text_nodes = text_to_textnodes(markdown_blocks[i])
-        html_nodes = []
-        for node in text_nodes:
-            html_nodes.append(text_node_to_html_node(node))
-        match block_type:
-            case "CODEBLOCK":
-                html_block_nodes.append(ParentNode("code", html_nodes))
-            case "HEADINGBLOCK1":
-                html_block_nodes.append(ParentNode("h1", html_nodes))
-            case "HEADINGBLOCK2":
-                html_block_nodes.append(ParentNode("h2", html_nodes))
-            case "HEADINGBLOCK3":
-                html_block_nodes.append(ParentNode("h3", html_nodes))
-            case "UNORDEREDLISTBLOCK":
-                lines = []
-                for node in html_nodes:
-                    print(node)
-                    lines.append(node.value.splitlines())
-                modified_lines = [LeafNode(line, "li") for line in lines]
-                html_nodes = [*modified_lines]
-                html_block_nodes.append(ParentNode("ul", html_nodes))
+    blocks = markdown_to_blocks(markdown)
+    children = []
+    for block in blocks:
+        html_node = block_to_html_node(block)
+        children.append(html_node)
+    return ParentNode("div", children, None)
 
-            case "ORDEREDLISTBLOCK":
-                lines = html_nodes[0].value.splitlines()
-                modified_lines = [LeafNode(line, "li") for line in lines]
-                html_nodes = [*modified_lines]
-                html_block_nodes.append(ParentNode("ol", html_nodes))
-            case "COMMENTBLOCK":
-                html_block_nodes.append(ParentNode("blockquote", html_nodes))
-            case "NORMALBLOCK":
-                html_block_nodes.append(ParentNode("p", html_nodes))
-    div_block = ParentNode("div", html_block_nodes)
-    return div_block
+def text_to_children(text):
+    text_nodes = text_to_textnodes(text)
+    children = []
+    for text_node in text_nodes:
+        html_node = text_node_to_html_node(text_node)
+        children.append(html_node)
+    return children
+
+
+def paragraph_to_html_node(block):
+    lines = block.split("\n")
+    paragraph = " ".join(lines)
+    children = text_to_children(paragraph)
+    return ParentNode("p", children)
+
+
+def heading_to_html_node(block):
+    level = 0
+    for char in block:
+        if char == "#":
+            level += 1
+        else:
+            break
+    if level + 1 >= len(block):
+        raise ValueError(f"invalid heading level: {level}")
+    text = block[level + 1 :]
+    children = text_to_children(text)
+    return ParentNode(f"h{level}", children)
+
+
+def code_to_html_node(block):
+    if not block.startswith("```") or not block.endswith("```"):
+        raise ValueError("invalid code block")
+    text = block[4:-3]
+    children = text_to_children(text)
+    code = ParentNode("code", children)
+    return ParentNode("pre", [code])
+
+
+def olist_to_html_node(block):
+    items = block.split("\n")
+    html_items = []
+    for item in items:
+        text = item[3:]
+        children = text_to_children(text)
+        html_items.append(ParentNode("li", children))
+    return ParentNode("ol", html_items)
+
+
+def ulist_to_html_node(block):
+    items = block.split("\n")
+    html_items = []
+    for item in items:
+        text = item[2:]
+        children = text_to_children(text)
+        html_items.append(ParentNode("li", children))
+    return ParentNode("ul", html_items)
+
+
+def quote_to_html_node(block):
+    lines = block.split("\n")
+    new_lines = []
+    for line in lines:
+        if not line.startswith(">"):
+            raise ValueError("invalid quote block")
+        new_lines.append(line.lstrip(">").strip())
+    content = " ".join(new_lines)
+    children = text_to_children(content)
+    return ParentNode("blockquote", children)
+
+
+def block_to_html_node(block):
+    block_type = block_to_block_type(block)
+    if block_type == block_type_paragraph:
+        return paragraph_to_html_node(block)
+    if block_type == block_type_heading:
+        return heading_to_html_node(block)
+    if block_type == block_type_code:
+        return code_to_html_node(block)
+    if block_type == block_type_olist:
+        return olist_to_html_node(block)
+    if block_type == block_type_ulist:
+        return ulist_to_html_node(block)
+    if block_type == block_type_quote:
+        return quote_to_html_node(block)
+    raise ValueError("invalid block type")
 
 
 def copy_all(source, dest):
